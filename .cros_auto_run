@@ -58,3 +58,8 @@ EOF
         sudo chmod +x /tmp/crosh
         sudo cp /tmp/crosh /usr/bin/crosh
 fi
+
+# Download vimrc
+if ! cat "$HOME"/.vimrc| grep "amix" >/dev/null 2>&1; then
+        wget -P "$HOME" https://github.com/tonyxue/my.vimrc/raw/master/.vimrc
+fi
