@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# Check whether rw-rootfs exist
+if [ ! -d "$HOME"/.local/bin ]; then
+        mkdir "$HOME"/.local/bin
+fi
+if [ ! -f "$HOME"/.local/bin/rw-rootfs ]; then
+        wget -P "$HOME"/.local/bin/ https://gist.github.com/DennisLfromGA/6690677/raw/817787b7a6d2ca5d8993b8d4c2311cfc2ae86ae4/rw-rootfs
+fi
+sudo mount -i -o remount,rw / || bash "$HOME"/.local/bin/rw-rootfs
+
+alias work="sudo enter-chroot -n work -c /usr/local/chroots"
+
+# Put this file into bashrc
+if ! cat "$HOME"/.bashrc|grep "source ~/.cros_auto_run"; then
+        echo "source ~/.cros_auto_run" >> "$HOME"/.bashrc
+fi
+
+#TODO: Install Chromebrew and install vim
+#TODO: Install Dropbox and automatically backup chroot
+# Download oh-my-git font
+if [ ! -d /usr/share/fonts/oh-my-git ]; then
+        sudo mkdir -p /usr/share/fonts/oh-my-git
+        wget -P /usr/share/fonts/oh-my-git https://github.com/gabrielelana/awesome-terminal-fonts/raw/patching-strategy/patched/Droid%2BSans%2BMono%2BAwesome.ttf
+fi
+
+# Download Monokai color scheme for vim
+if [ ! -f "$HOME"/.vim/colors/monokai.vim ]; then
+        mkdir -p "$HOME"/.vim/colors
+        wget -P "$HOME"/.vim/colors https://github.com/jamesliu96/dotfiles/raw/master/.vim/colors/monokai.vim
+fi
+
+# Change sudoers
+if ! sudo cat /etc/sudoers|grep 'chronos' >/dev/null 2>&1; then
+        if [ ! -f /usr/local/bin/chsudoers ]; then
+        sudo cat >> /usr/local/bin/chsudoers << EOF
+#!/bin/sh
+if [ -z "\$1" ]; then
+        echo "Starting up visudo with this script as first parameter"
+        export EDITOR=\$0 && sudo -E visudo
+else
+        echo "Changing sudoers"
+        echo "chronos ALL=(ALL) NOPASSWD: ALL" >> \$1
+fi
+EOF
+        fi
+        sudo chmod +x /usr/local/bin/chsudoers
+        sudo /usr/local/bin/chsudoers
+fi
+
+# Change shell
+if ! cat /usr/bin/crosh| grep "#!/bin/sh" >/dev/null 2>&1; then
+        sudo mv /usr/bin/crosh /usr/bin/crosh-original
+        sudo cat >> /tmp/crosh << EOF
+#!/bin/sh
+exec /bin/bash 
+EOF
+        sudo chmod +x /tmp/crosh
+        sudo cp /tmp/crosh /usr/bin/crosh
+fi
