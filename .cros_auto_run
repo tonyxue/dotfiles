@@ -1,9 +1,20 @@
 #!/bin/sh
 
-# Check whether rw-rootfs exist
-if [ ! -d "$HOME"/.local/bin ]; then
-        mkdir "$HOME"/.local/bin
+# Make sure the directories exist and are in the PATH
+if [ ! -d /usr/local/bin ]; then
+        sudo mkdir -p /usr/local/bin
+        if ! echo $PATH|grep "/usr/local/bin" >/dev/null 2>&1; then
+                export PATH="/usr/local/bin:"$PATH
+        fi
 fi
+if [ ! -d "$HOME"/.local/bin ]; then
+        mkdir -p "$HOME"/.local/bin
+        if ! echo $PATH|grep "$HOME/.local/bin" >/dev/null 2>&1; then
+                export PATH="$HOME/.local/bin:"$PATH
+        fi
+fi
+
+# Check whether rw-rootfs exist
 if [ ! -f "$HOME"/.local/bin/rw-rootfs ]; then
         wget -P "$HOME"/.local/bin/ https://gist.github.com/DennisLfromGA/6690677/raw/817787b7a6d2ca5d8993b8d4c2311cfc2ae86ae4/rw-rootfs
 fi
@@ -12,16 +23,26 @@ sudo mount -i -o remount,rw / || bash "$HOME"/.local/bin/rw-rootfs
 alias work="sudo enter-chroot -n work -c /usr/local/chroots"
 
 # Put this file into bashrc
-if ! cat "$HOME"/.bashrc|grep "source ~/.cros_auto_run"; then
-        echo "source ~/.cros_auto_run" >> "$HOME"/.bashrc
+if ! cat "$HOME"/.bashrc|grep ". ~/.cros_auto_run"; then
+        echo ". ~/.cros_auto_run" >> "$HOME"/.bashrc
 fi
 
-#TODO: Install Chromebrew and install vim
+CREW_INSTALLED=$(which crew>/dev/null 2>&1;echo $?)
+if [ ! $CREW_INSTALLED -ge 0 ]; then
+        # Chromebrew not installed
+        wget -q -O - https://raw.github.com/skycocker/chromebrew/master/install.sh | bash
+        # Also install the vim from Chromebrew
+        crew install vim
+        # And the pathogen
+        mkdir -p ~/.vim/autoload ~/.vim/bundle && \
+                curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+fi
 #TODO: Install Dropbox and automatically backup chroot
 # Download oh-my-git font
 if [ ! -d /usr/share/fonts/oh-my-git ]; then
         sudo mkdir -p /usr/share/fonts/oh-my-git
-        wget -P /usr/share/fonts/oh-my-git https://github.com/gabrielelana/awesome-terminal-fonts/raw/patching-strategy/patched/Droid%2BSans%2BMono%2BAwesome.ttf
+        sudo wget -P /usr/share/fonts/oh-my-git https://github.com/gabrielelana/awesome-terminal-fonts/raw/patching-strategy/patched/Droid%2BSans%2BMono%2BAwesome.ttf
+        echo "Fonts installed! Remeber to restart!"
 fi
 
 # Download Monokai color scheme for vim
@@ -33,7 +54,7 @@ fi
 # Change sudoers
 if ! sudo cat /etc/sudoers|grep 'chronos' >/dev/null 2>&1; then
         if [ ! -f /usr/local/bin/chsudoers ]; then
-        sudo cat >> /usr/local/bin/chsudoers << EOF
+        sudo cat >> /tmp/chsudoers << EOF
 #!/bin/sh
 if [ -z "\$1" ]; then
         echo "Starting up visudo with this script as first parameter"
@@ -44,7 +65,8 @@ else
 fi
 EOF
         fi
-        sudo chmod +x /usr/local/bin/chsudoers
+        sudo chmod +x /tmp/chsudoers
+        sudo mv /tmp/chsudoers /usr/local/bin/chsudoers
         sudo /usr/local/bin/chsudoers
 fi
 
